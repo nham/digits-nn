@@ -29,8 +29,8 @@ class NeuralNetwork:
         for (weights, biases) in zip(self.weights, self.biases):
             z = np.dot(weights, a) + biases
             a = sigmoid(z)
-
         return a
+
 
     def sgd(self, training_data, num_epochs, batch_size, eta, test_data=None):
         """
@@ -79,7 +79,6 @@ class NeuralNetwork:
                         for w, grad_w in zip(self.weights, batch_grad_w)]
         self.biases = [b - (eta/m) * grad_b
                         for b, grad_b in zip(self.biases, batch_grad_b)]
-
 
 
     def backpropagation(self, x, y):

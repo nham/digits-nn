@@ -5,7 +5,12 @@ import network
 class ParseException(Exception):
     pass
 
-def read_label_file(filename):
+def kth_standard_basis_vector(k):
+    z = np.zeros((10, 1))
+    z[k] = 1.0
+    return z
+
+def read_label_file(filename, vectorize_labels=False):
     with open(filename, 'rb') as f:
         magic = f.read(4)
         magic_int = int.from_bytes(magic, byteorder='big')
@@ -17,7 +22,10 @@ def read_label_file(filename):
         labels = []
         for i in range(0, n):
             label = f.read(1)
-            labels.append(label[0])
+            if vectorize_labels:
+                labels.append(kth_standard_basis_vector(label[0]))
+            else:
+                labels.append(label[0])
 
     assert len(labels) == n
     return labels
@@ -47,7 +55,7 @@ def read_training_data():
     label_file_name = 'data/train-labels-idx1-ubyte'
 
     return list(zip(read_image_file(image_file_name),
-                    read_label_file(label_file_name)))
+                    read_label_file(label_file_name, vectorize_labels=True)))
 
 def read_test_data():
     image_file_name = 'data/t10k-images-idx3-ubyte'
