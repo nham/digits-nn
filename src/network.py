@@ -32,13 +32,13 @@ class NeuralNetwork:
         return a
 
 
-    def sgd(self, training_data, num_epochs, batch_size, eta, test_data=None):
+    def sgd(self, training_data, num_epochs, mini_batch_size, eta, test_data=None):
         """
         Runs stochastic gradient descent to train the network.
 
         An *epoch* is when all items in `training_data` are used once. In each
-        epoch, training data is broken up into blocks of size `batch_size` at
-        random. Each `batch_size` collection of data is used to take a step
+        epoch, training data is broken up into blocks of size `mini_batch_size` at
+        random. Each `mini_batch_size` collection of data is used to take a step
         under gradient descent. Keep taking steps until all the training data
         is used, and then the epoch is complete.
 
@@ -50,9 +50,9 @@ class NeuralNetwork:
 
         for i in range(0, num_epochs):
             random.shuffle(training_data)
-            for j in range(0, n, batch_size):
-                batch = training_data[j:j+batch_size]
-                self.update_batch(batch, eta)
+            for j in range(0, n, mini_batch_size):
+                batch = training_data[j:j+mini_batch_size]
+                self.update_batch(batch, eta, lmba, n)
 
             if test_data is not None:
                 print("Epoch {}: {}/{}".format(i, self.evaluate(test_data), n_test))
@@ -60,7 +60,7 @@ class NeuralNetwork:
                 print("Epoch {} complete.".format(i))
 
 
-    def update_batch(self, batch, eta):
+    def update_batch(self, mini_batch, eta):
         """
         Take a step under gradient descent using a batch of examples.
         """
@@ -69,12 +69,12 @@ class NeuralNetwork:
         # cost functions corresponding to each example.
         batch_grad_b = [np.zeros(b.shape) for b in self.biases]
         batch_grad_w = [np.zeros(w.shape) for w in self.weights]
-        for x, y in batch:
+        for x, y in mini_batch:
             ex_grad_b, ex_grad_w = self.backpropagation(x, y)
             batch_grad_b = [batch_b + ex_b for batch_b, ex_b in zip(batch_grad_b, ex_grad_b)]
             batch_grad_w = [batch_w + ex_w for batch_w, ex_w in zip(batch_grad_w, ex_grad_w)]
 
-        m = len(batch)
+        m = len(mini_batch)
         self.weights = [w - (eta/m) * grad_w
                         for w, grad_w in zip(self.weights, batch_grad_w)]
         self.biases = [b - (eta/m) * grad_b
