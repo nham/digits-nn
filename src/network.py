@@ -32,7 +32,7 @@ class NeuralNetwork:
         return a
 
 
-    def sgd(self, training_data, num_epochs, mini_batch_size, eta, test_data=None):
+    def sgd(self, training_data, num_epochs, mini_batch_size, eta, λ = 0.0, test_data=None):
         """
         Runs stochastic gradient descent to train the network.
 
@@ -52,7 +52,7 @@ class NeuralNetwork:
             random.shuffle(training_data)
             for j in range(0, n, mini_batch_size):
                 batch = training_data[j:j+mini_batch_size]
-                self.update_batch(batch, eta, lmba, n)
+                self.update_batch(batch, eta, λ, n)
 
             if test_data is not None:
                 print("Epoch {}: {}/{}".format(i, self.evaluate(test_data), n_test))
@@ -60,7 +60,7 @@ class NeuralNetwork:
                 print("Epoch {} complete.".format(i))
 
 
-    def update_batch(self, mini_batch, eta):
+    def update_batch(self, mini_batch, eta, λ, n):
         """
         Take a step under gradient descent using a batch of examples.
         """
@@ -75,7 +75,7 @@ class NeuralNetwork:
             batch_grad_w = [batch_w + ex_w for batch_w, ex_w in zip(batch_grad_w, ex_grad_w)]
 
         m = len(mini_batch)
-        self.weights = [w - (eta/m) * grad_w
+        self.weights = [(1 - eta * λ/n) * w - (eta/m) * grad_w
                         for w, grad_w in zip(self.weights, batch_grad_w)]
         self.biases = [b - (eta/m) * grad_b
                         for b, grad_b in zip(self.biases, batch_grad_b)]
