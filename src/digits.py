@@ -10,7 +10,7 @@ def kth_standard_basis_vector(k):
     z[k] = 1.0
     return z
 
-def read_label_file(filename, vectorize_labels=False):
+def read_label_file(filename, hold_out=None):
     with open(filename, 'rb') as f:
         magic = f.read(4)
         magic_int = int.from_bytes(magic, byteorder='big')
@@ -19,18 +19,30 @@ def read_label_file(filename, vectorize_labels=False):
 
         n = int.from_bytes(f.read(4), byteorder='big')
 
-        labels = []
-        for i in range(0, n):
-            label = f.read(1)
-            if vectorize_labels:
-                labels.append(kth_standard_basis_vector(label[0]))
-            else:
+        if hold_out is None:
+            labels = []
+            for i in range(0, n):
+                label = f.read(1)
                 labels.append(label[0])
+            assert len(labels) == n
+            return labels
+        else:
+            labels1 = []
+            for i in range(0, n - hold_out):
+                label = f.read(1)
+                labels1.append(label[0])
 
-    assert len(labels) == n
-    return labels
+            labels2 = []
+            for i in range(0, hold_out):
+                label = f.read(1)
+                labels2.append(label[0])
 
-def read_image_file(filename):
+            assert len(labels1) == n - hold_out
+            assert len(labels2) == hold_out
+            return labels1, labels2
+
+
+def read_image_file(filename, hold_out=None):
     with open(filename, 'rb') as f:
         magic = f.read(4)
         magic_int = int.from_bytes(magic, byteorder='big')
@@ -42,31 +54,52 @@ def read_image_file(filename):
         cols = int.from_bytes(f.read(4), byteorder='big')
         num_pixels = rows*cols
 
-        images = []
-        for i in range(0, n):
-            pixel_vec = np.fromstring(f.read(num_pixels), dtype=np.uint8)
-            images.append(pixel_vec.reshape(len(pixel_vec), 1))
+        # reads `num_images` from f, each being a list of `num_pixels` bytes
+        # converts them to floats between 0 and 1 and appends to `images_list`
+        def append_images(images_list, num_images, num_pixels):
+            for i in range(0, num_images):
+                pixel_vec = np.fromstring(f.read(num_pixels), dtype=np.uint8)
+                float_pixel_vec = np.zeros((len(pixel_vec), 1))
+                for j in range(0, len(pixel_vec)):
+                    float_pixel_vec[j] = float(pixel_vec[j])/255.0
 
-    assert len(images) == n
-    return images
+                images_list.append(float_pixel_vec)
 
-def read_training_data():
-    image_file_name = 'data/train-images-idx3-ubyte'
-    label_file_name = 'data/train-labels-idx1-ubyte'
-
-    return list(zip(read_image_file(image_file_name),
-                    read_label_file(label_file_name, vectorize_labels=True)))
-
-def read_test_data():
-    image_file_name = 'data/t10k-images-idx3-ubyte'
-    label_file_name = 'data/t10k-labels-idx1-ubyte'
-
-    return list(zip(read_image_file(image_file_name),
-                    read_label_file(label_file_name)))
+        if hold_out is None:
+            images = []
+            append_images(images, n, num_pixels)
+            assert len(images) == n
+            return images
+        else:
+            images1, images2 = [], []
+            append_images(images1, n - hold_out, num_pixels)
+            append_images(images2, hold_out, num_pixels)
+            assert len(images1) == n - hold_out
+            assert len(images2) == hold_out
+            return images1, images2
 
 
-training_data = read_training_data()
-test_data = read_test_data()
+def load_data():
+    train_image_file = 'data/train-images-idx3-ubyte'
+    train_label_file = 'data/train-labels-idx1-ubyte'
+    test_image_file = 'data/t10k-images-idx3-ubyte'
+    test_label_file = 'data/t10k-labels-idx1-ubyte'
+
+    training_images, validation_images = read_image_file(train_image_file, hold_out=10000)
+    training_labels, validation_labels = read_label_file(train_label_file, hold_out=10000)
+
+    training_labels = [kth_standard_basis_vector(y) for y in training_labels]
+
+    training_data = list(zip(training_images, training_labels))
+    validation_data = list(zip(validation_images, validation_labels))
+    test_data = list(zip(read_image_file(test_image_file),
+                         read_label_file(test_label_file)))
+
+    return (training_data, validation_data, test_data)
+
+
+
+training_data, validation_data, test_data = load_data()
 
 nn = network.NeuralNetwork([28*28, 30, 10])
 num_epochs = 30
