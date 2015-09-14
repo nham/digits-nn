@@ -10,11 +10,19 @@ class QuadraticCost:
         """outer layer error = grad C(a) (*Hadamard product*) sigmoid'(z)"""
         return (a - y) * a * (1 - a)
 
+    @staticmethod
+    def example_cost(a, y):
+        return 0.5 * np.linalg.norm(a - y)**2
+
 class CrossEntropyCost:
     @staticmethod
     def delta(a, y):
         """outer layer error = grad C(a) (*Hadamard product*) sigmoid'(z)"""
         return (a - y)
+
+    @staticmethod
+    def example_cost(a, y):
+        return np.sum( np.nan_to_num(-y * np.log(a) - (1 - y) * np.log(1 - a)) )
 
 
 
@@ -57,7 +65,7 @@ class NeuralNetwork:
 
 
     def sgd(self, training_data, num_epochs, mini_batch_size, eta, λ = 0.0,
-            eval_data=None, monitor_eval_accuracy=False):
+            eval_data=None, monitor_eval_accuracy=False, monitor_training_cost=False):
         """
         Runs stochastic gradient descent to train the network.
 
@@ -85,6 +93,8 @@ class NeuralNetwork:
 
             if monitor_eval_accuracy:
                 print("Evaluation data accuracy: {}/{}".format(self.accuracy(eval_data), n_eval))
+            if monitor_training_cost:
+                print("Training data cost: {}".format(self.total_cost(training_data, λ)))
 
 
     def update_batch(self, mini_batch, eta, λ, n):
@@ -156,3 +166,14 @@ class NeuralNetwork:
             out = np.argmax(self.feedforward(x))
             if out == y: correct += 1
         return correct
+
+
+    def total_cost(self, data, λ):
+        cost = 0.0
+        n = len(data)
+        for x, y in data:
+            cost += self.cost.example_cost(self.feedforward(x), y) / n
+
+        # add regularization term
+        cost += (λ / (2*n)) * sum([np.linalg.norm(w)**2 for w in self.weights])
+        return cost
