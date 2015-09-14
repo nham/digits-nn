@@ -4,9 +4,23 @@ import numpy as np
 def sigmoid(z):
     return 1.0/(1.0 + np.exp(-z))
 
+class QuadraticCost:
+    @staticmethod
+    def delta(a, y):
+        """outer layer error = grad C(a) (*Hadamard product*) sigmoid'(z)"""
+        return (a - y) * a * (1 - a)
+
+class CrossEntropyCost:
+    @staticmethod
+    def delta(a, y):
+        """outer layer error = grad C(a) (*Hadamard product*) sigmoid'(z)"""
+        return (a - y)
+
+
+
 class NeuralNetwork:
 
-    def __init__(self, sizes):
+    def __init__(self, sizes, cost=CrossEntropyCost, weight_init=None):
         """
         `sizes` is a list of the number of units in each layer.
         `sizes[0]` is the number of input units.
@@ -17,9 +31,19 @@ class NeuralNetwork:
         """
         self.num_layers = len(sizes)
         self.sizes = sizes
+        self.cost = cost
+
         self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
-        self.weights = [np.random.randn(y, x)
-                        for x, y in zip(sizes[:-1], sizes[1:])]
+
+        if weight_init is None or weight_init == 'default':
+            self.weights = [np.random.randn(y, x) / np.sqrt(x)
+                                for x, y in zip(sizes[:-1], sizes[1:])]
+        elif weight_init == 'large':
+            self.weights = [np.random.randn(y, x)
+                                for x, y in zip(sizes[:-1], sizes[1:])]
+        else:
+            raise Exception("unrecognized 'weight_init' option")
+
 
     def feedforward(self, inp):
         """
@@ -32,7 +56,8 @@ class NeuralNetwork:
         return a
 
 
-    def sgd(self, training_data, num_epochs, mini_batch_size, eta, λ = 0.0, test_data=None):
+    def sgd(self, training_data, num_epochs, mini_batch_size, eta, λ = 0.0,
+            eval_data=None, monitor_eval_accuracy=False):
         """
         Runs stochastic gradient descent to train the network.
 
@@ -46,7 +71,9 @@ class NeuralNetwork:
         """
 
         n = len(training_data)
-        if test_data is not None: n_test = len(test_data)
+        if eval_data is not None: n_eval = len(eval_data)
+
+        eval_cost = []
 
         for i in range(0, num_epochs):
             random.shuffle(training_data)
@@ -54,10 +81,10 @@ class NeuralNetwork:
                 batch = training_data[j:j+mini_batch_size]
                 self.update_batch(batch, eta, λ, n)
 
-            if test_data is not None:
-                print("Epoch {}: {}/{}".format(i, self.evaluate(test_data), n_test))
-            else:
-                print("Epoch {} complete.".format(i))
+            print("Epoch {} complete.".format(i))
+
+            if monitor_eval_accuracy:
+                print("Evaluation data accuracy: {}/{}".format(self.accuracy(eval_data), n_eval))
 
 
     def update_batch(self, mini_batch, eta, λ, n):
@@ -87,7 +114,7 @@ class NeuralNetwork:
         single training example.
 
         Steps:
-        
+
           - compute output layer error
           - "backpropagate" the error to compute errors in previous layers
           - compute gradient from the layer-by-layer errors in previous steps
@@ -108,7 +135,7 @@ class NeuralNetwork:
 
         # output layer error, = grad C(a) (*Hadamard product*) sigmoid'(z)
         # note sigmoid'(z) = sigmoid(z) * (1 - sigmoid(z)) = a * (1 - a)
-        delta = (activations[-1] - y) * activations[-1] * (1 - activations[-1])
+        delta = self.cost.delta(activations[-1], y)
 
         grad_b[-1] = delta
         grad_w[-1] = np.dot(delta, activations[-2].transpose())
@@ -122,9 +149,10 @@ class NeuralNetwork:
         return grad_b, grad_w
 
 
-    def evaluate(self, test_data):
+    def accuracy(self, data):
+        """Returns number of examples in `data` that the network correctly classifies."""
         correct = 0
-        for x, y in test_data:
+        for x, y in data:
             out = np.argmax(self.feedforward(x))
             if out == y: correct += 1
         return correct

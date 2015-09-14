@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 
 import network
@@ -98,11 +100,23 @@ def load_data():
     return (training_data, validation_data, test_data)
 
 
+pickled_data_file = 'data/prepared_mnist.pkl'
 
-training_data, validation_data, test_data = load_data()
+def load_from_pickled():
+    return pickle.load( open(pickled_data_file, "rb") )
 
-nn = network.NeuralNetwork([28*28, 30, 10])
+def load_from_orig():
+    loaded_data = load_data()
+    pickle.dump( loaded_data, open(pickled_data_file, "wb" ) )
+    return loaded_data
+
+#training_data, validation_data, test_data = load_from_orig()
+training_data, validation_data, test_data = load_from_pickled()
+
+nn = network.NeuralNetwork([28*28, 100, 10])
 num_epochs = 30
 batch_size = 10
-nn.sgd(training_data, num_epochs, batch_size, 3.0, test_data)
+eta = 1.0
+nn.sgd(training_data[:1000], num_epochs, batch_size, eta, λ = 10.0,
+       eval_data=validation_data[:200], monitor_eval_accuracy=True)
 
